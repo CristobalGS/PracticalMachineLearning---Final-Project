@@ -1,0 +1,59 @@
+---
+title: Predicting quality performance of Unilateral Dumbbell Biceps Curl with the  Weight
+  Lifting Exercises dataset (HAR project)
+author: "Cristobal Gallegos S."
+date: "October 23, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading the data:
+```{r cars}
+library(caret)
+
+setwd("C:/Users/ASUS/OneDrive/Documents/Coursera/Data Science Specialization/Practical Machine Learning/Final project")
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", "pml-training.csv")
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", "pml-testing.csv")
+
+wle.training <- read.csv("pml-training.csv")
+wle.testing <- read.csv("pml-testing.csv")
+```
+
+
+Cleaning the data set:
+```{r}
+wle <- wle.training
+wle <- wle[ , - c(12:36, 50:59, 69:83, 87:100)]
+wle <- wle[ , - c(37, 39:48, 61:75, 77:86)]
+wle <- wle[ , - c(1, 3:7)]
+```
+
+Those variable were eliminated since they were primarily empty columns or variables which had no relation to the outcome.
+
+## Model selection
+
+Exploratory analysis of the data was performed. However, because of the complexity of the predictor variables, no pattern could be observed, even after applying PCAs and plotting principal components against the outcome (classe).
+
+Different models were tryed. Boosting with the "gbm" method from the caret package had a very poor accuracy of about 0.37. However, the same method after preprocessing the predictors with PCA improved the accuracy to about 0.75. A random forest model (method "rf") after performing PCA had an even better accuracy of about 0.85. A third model was tryed combining the predictors from both the above models, however it resulted in a neraly cero improvement of accuracy. In consequence, the sencond model was selected for prediction. The out of sample error is expected to be a little bit higher, although, this model shoud be able to minimize it.
+
+
+Applying cross-validation by 10 different random subsamples and averaging accuracy.
+```{r, eval = FALSE}
+folds <- createFolds(y = wle$classe, k = 10)
+
+accuracy <- vector(mode = "numeric")
+
+for(i in 1:10){
+  training <- wle[folds[[i]], ]
+  testing <- wle[-folds[[i]], ]
+  mod <- train(classe ~ ., method = "rf", preProcess = "pca", data = training)
+  confusion <- confusionMatrix(predict(mod, testing), testing$classe)
+  accuracy <- c(accuracy, confusion$overall[1])
+}
+
+mean(accuracy)
+```
